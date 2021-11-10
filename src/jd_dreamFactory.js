@@ -1693,7 +1693,6 @@ if ($.isNode()) {
       $.canHelpFlag = true;//能否助力朋友(招工)
       $.tuanNum = 0;//成团人数
       console.log(`\n******开始【京东账号${$.index}】${$.nickName || $.UserName}*********\n`);
-      runTimesErrCount = 0
       await jdDreamFactory()
     }
   }
@@ -1720,9 +1719,6 @@ if ($.isNode()) {
   }
   if ($.isNode() && allMessage) {
     await notify.sendNotify(`${$.name}`, `${allMessage}`, {url: jxOpenUrl})
-  }
-  if (runTimesErr) {
-    await notify.sendNotify(`${$.name}上报失败`, runTimesErr, '', '\n\n你好,世界!')
   }
 })()
 
@@ -2231,16 +2227,12 @@ function userInfo() {
               $.productionId = production.productionId;//商品ID
               $.commodityDimId = production.commodityDimId;
               $.encryptPin = data.user.encryptPin;
-              for (let k = 0; k < 3; k++) {
+              for (let k = 0; k < 5; k++) {
                 try {
                   await runTimes()
                   console.log('ok')
                   break
                 } catch (e) {
-                  runTimesErrCount++
-                  if (runTimesErrCount === 3) {
-                    runTimesErr += `${$.UserName}:${e}\n`
-                  }
                 }
                 await $.wait(Math.floor(Math.random() * 10 + 3) * 1000)
               }

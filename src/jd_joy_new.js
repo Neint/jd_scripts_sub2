@@ -1,6 +1,6 @@
-/**
+﻿/**
  更新时间：2021-09-30
- cron: 0-23/2 * * * *
+ cron: 0 0-23/2 * * *
  export feedNum=80
  export JD_JOY_teamLevel=2
  */
@@ -11,7 +11,7 @@ console.log('\n====================Hello World====================\n')
 const injectToRequest = require("./jd_joy_validate").injectToRequest, USER_AGENT = require("./USER_AGENTS").USER_AGENT, md5 = require('md5')
 
 let cookiesArr = [], cookie = '', notify;
-let invokeKey = 'JL1VTNRadM68cIMQ';
+let invokeKey = 'q8DNJdpcfRQ69gIx';
 
 $.get = injectToRequest($.get.bind($))
 $.post = injectToRequest($.post.bind($))
@@ -23,13 +23,11 @@ $.post = injectToRequest($.post.bind($))
       cookie = cookiesArr[i];
       $.UserName = decodeURIComponent(cookie.match(/pt_pin=([^; ]+)(?=;?)/) && cookie.match(/pt_pin=([^; ]+)(?=;?)/)[1])
       $.index = i + 1;
-      $.isLogin = true;
-      $.nickName = $.UserName;
       if (!require('./JS_USER_AGENTS').HelloWorld) {
         console.log(`\n【京东账号${$.index}】${$.nickName || $.UserName}：运行环境检测失败\n`);
         break
       }
-      console.log(`\n开始【京东账号${$.index}】${$.nickName || $.UserName}\n`);
+      console.log(`\n开始【京东账号${$.index}】${$.UserName}\n`);
 
       let res = await api('gift/getBeanConfigs');
       try {
@@ -43,7 +41,7 @@ $.post = injectToRequest($.post.bind($))
 
       await run('detail/v2');
       await run();
-      await feed();
+      // await feed();
 
       let tasks = await api('pet/getPetTaskConfig');
       for (let tp of tasks.datas) {
@@ -53,32 +51,33 @@ $.post = injectToRequest($.post.bind($))
           await $.wait(3000);
         }
         if (tp.taskName === '浏览频道') {
-          for (let i = 0; i < 3; i++) {
-            console.log(`\t第${i + 1}次浏览频道 检查遗漏`)
-            let followChannelList = await api('pet/getFollowChannels');
-            for (let t of followChannelList['datas']) {
-              if (!t.status) {
-                console.log('┖', t['channelName'])
-                await beforeTask('follow_channel', t.channelId);
-                await doTask(JSON.stringify({"channelId": t.channelId, "taskType": 'FollowChannel'}))
-                await $.wait(3000)
-              }
+          let followChannelList = await api('pet/getFollowChannels');
+          for (let t of followChannelList['datas']) {
+            if (!t.status) {
+              console.log('┖', t['channelName'])
+              await beforeTask('follow_channel', t.channelId);
+              await $.wait(1000)
+              await doTask(JSON.stringify({"channelId": t.channelId, "taskType": 'FollowChannel'}))
+              await $.wait(6000)
             }
-            await $.wait(3000)
           }
         }
+
         if (tp.taskName === '逛会场') {
           for (let t of tp.scanMarketList) {
             if (!t.status) {
               console.log('┖', t.marketName)
+              await beforeTask('scan_market', encodeURIComponent(t.marketLink || t.marketLinkH5))
+              await $.wait(1000)
               await doTask(JSON.stringify({
-                "marketLink": `${t.marketLink || t.marketLinkH5}`,
+                "marketLink": t.marketLink || t.marketLinkH5,
                 "taskType": "ScanMarket"
-              }))
-              await $.wait(3000)
+              }), 'scan')
+              await $.wait(6000)
             }
           }
         }
+
         if (tp.taskName === '关注商品') {
           for (let t of tp.followGoodList) {
             if (!t.status) {
@@ -86,17 +85,19 @@ $.post = injectToRequest($.post.bind($))
               await beforeTask('follow_good', t.sku)
               await $.wait(1000)
               await doTask(`sku=${t.sku}`, 'followGood')
-              await $.wait(3000)
+              await $.wait(6000)
             }
           }
         }
+
         if (tp.taskName === '关注店铺') {
-          for (let t of tp.followShops) {
+          await $.wait(10000)
+          for (let t of tp.followShops.reverse()) {
             if (!t.status) {
               await beforeTask('follow_shop', t.shopId);
               await $.wait(1000);
               await followShop(t.shopId)
-              await $.wait(2000);
+              await $.wait(6000);
             }
           }
         }
@@ -110,15 +111,15 @@ function api(fn) {
     let lkt = new Date().getTime()
     let lks = md5('' + invokeKey + lkt).toString()
     $.get({
-      url: `https://jdjoy.jd.com/common/${fn}?reqSource=h5&invokeKey=${invokeKey}`,
+      url: `https://draw.jdfcloud.com//common/${fn}?reqSource=weapp&invokeKey=${invokeKey}`,
       headers: {
         'lkt': lkt,
         'lks': lks,
-        'Origin': 'https://h5.m.jd.com',
-        'Host': 'jdjoy.jd.com',
-        'User-Agent': USER_AGENT,
-        'cookie': cookie,
-        'Referer': 'https://h5.m.jd.com/babelDiy/Zeus/2wuqXrZrhygTQzYA7VufBEpj4amH/index.html'
+        'Host': 'draw.jdfcloud.com',
+        'content-type': 'application/json',
+        'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 12_4_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 MicroMessenger/8.0.16(0x18001027) NetType/WIFI Language/zh_CN',
+        'Referer': 'https://servicewechat.com/wxccb5c536b0ecd1bf/770/page-frame.html',
+        'Cookie': cookie,
       },
     }, (err, resp, data) => {
       try {
@@ -135,19 +136,23 @@ function beforeTask(fn, shopId) {
     let lkt = new Date().getTime()
     let lks = md5('' + invokeKey + lkt).toString()
     $.get({
-      url: `https://jdjoy.jd.com/common/pet/icon/click?iconCode=${fn}&linkAddr=${shopId}&reqSource=h5&invokeKey=${invokeKey}`,
+      url: `https://draw.jdfcloud.com//common/pet/icon/click?iconCode=${fn}&linkAddr=${shopId}&reqSource=weapp&invokeKey=${invokeKey}`,
       headers: {
         lkt: lkt,
         lks: lks,
-        'Content-Type': 'application/json',
-        'Origin': 'https://h5.m.jd.com',
-        'Host': 'jdjoy.jd.com',
-        'User-Agent': USER_AGENT,
-        'Referer': 'https://h5.m.jd.com/babelDiy/Zeus/2wuqXrZrhygTQzYA7VufBEpj4amH/index.html',
-        'cookie': cookie
+        'Host': 'draw.jdfcloud.com',
+        'Connection': 'keep-alive',
+        'content-type': 'application/json',
+        'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 12_4_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 MicroMessenger/8.0.16(0x18001027) NetType/WIFI Language/zh_CN',
+        'Referer': 'https://servicewechat.com/wxccb5c536b0ecd1bf/770/page-frame.html',
+        'Cookie': cookie
       }
     }, (err, resp, data) => {
-      console.log('before task:', data);
+      data = $.toObj(data)
+      if (data.errorCode === null)
+        console.log('before task: OK');
+      else
+        console.log('before task Error:', data);
       resolve();
     })
   })
@@ -158,19 +163,14 @@ function followShop(shopId) {
     let lkt = new Date().getTime()
     let lks = md5('' + invokeKey + lkt).toString()
     $.post({
-      url: `https://jdjoy.jd.com/common/pet/followShop?reqSource=h5&invokeKey=${invokeKey}`,
+      url: `https://draw.jdfcloud.com//common/pet/followShop?reqSource=weapp&invokeKey=${invokeKey}`,
       headers: {
         lkt: lkt,
         lks: lks,
-        'User-Agent': USER_AGENT,
-        'Accept-Language': 'zh-cn',
-        'Referer': 'https://h5.m.jd.com/babelDiy/Zeus/2wuqXrZrhygTQzYA7VufBEpj4amH/index.html?babelChannel=ttt12&lng=0.000000&lat=0.000000&sid=87e644ae51ba60e68519b73d1518893w&un_area=12_904_3373_62101',
-        'Host': 'jdjoy.jd.com',
-        'Origin': 'https://h5.m.jd.com',
-        'Accept': '*/*',
-        'Connection': 'keep-alive',
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'cookie': cookie
+        'Host': 'draw.jdfcloud.com',
+        'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 12_4_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 MicroMessenger/8.0.16(0x18001027) NetType/WIFI Language/zh_CN',
+        'Referer': 'https://servicewechat.com/wxccb5c536b0ecd1bf/770/page-frame.html',
+        'Cookie': cookie
       },
       body: `shopId=${shopId}`
     }, (err, resp, data) => {
@@ -182,29 +182,30 @@ function followShop(shopId) {
 
 function doTask(body, fnId = 'scan') {
   return new Promise(resolve => {
+    let contentType
     let lkt = new Date().getTime()
     let lks = md5('' + invokeKey + lkt).toString()
+    if (fnId === 'followGood' || fnId === 'followShop') {
+      contentType = 'application/x-www-form-urlencoded'
+    } else {
+      contentType = 'application/json'
+    }
     $.post({
-      url: `https://jdjoy.jd.com/common/pet/${fnId}?reqSource=h5&invokeKey=${invokeKey}`,
+      url: `https://draw.jdfcloud.com//common/pet/${fnId}?reqSource=weapp&invokeKey=${invokeKey}`,
       headers: {
         'lkt': lkt,
         'lks': lks,
-        'Host': 'jdjoy.jd.com',
-        'accept': '*/*',
-        'content-type': fnId === 'followGood' || fnId === 'followShop' ? 'application/x-www-form-urlencoded' : 'application/json',
-        'origin': 'https://h5.m.jd.com',
-        'accept-language': 'zh-cn',
-        'referer': 'https://h5.m.jd.com/',
-        'Content-Type': fnId === 'followGood' ? 'application/x-www-form-urlencoded' : 'application/json; charset=UTF-8',
-        "User-Agent": USER_AGENT,
-        'cookie': cookie
+        'Host': 'draw.jdfcloud.com',
+        'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 12_4_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 MicroMessenger/8.0.16(0x18001027) NetType/WIFI Language/zh_CN',
+        'Referer': 'https://servicewechat.com/wxccb5c536b0ecd1bf/770/page-frame.html',
+        'Content-Type': contentType,
+        'Cookie': cookie
       },
       body: body
     }, (err, resp, data) => {
       if (err)
         console.log('\tdoTask() Error:', err)
       try {
-        console.log('\tdotask:', data)
         data = JSON.parse(data);
         data.success ? console.log('\t任务成功') : console.log('\t任务失败', JSON.stringify(data))
       } catch (e) {
@@ -217,59 +218,31 @@ function doTask(body, fnId = 'scan') {
 }
 
 function feed() {
-  let feedNum = process.env.feedNum ? process.env.feedNum : 80
+  let feedNum = process.env.feedNum ? process.env.feedNum * 1 : 80
   return new Promise(resolve => {
     let lkt = new Date().getTime()
     let lks = md5('' + invokeKey + lkt).toString()
-    $.post({
-      url: `https://jdjoy.jd.com/common/pet/enterRoom/h5?invitePin=&reqSource=h5&invokeKey=${invokeKey}`,
+    $.get({
+      url: `https://draw.jdfcloud.com//common/pet/feed?feedCount=${feedNum}&invokeKey=${invokeKey}`,
       headers: {
         'lkt': lkt,
         'lks': lks,
-        'Host': 'jdjoy.jd.com',
-        'accept': '*/*',
+        'Host': 'draw.jdfcloud.com',
+        'Connection': 'keep-alive',
         'content-type': 'application/json',
-        'origin': 'https://h5.m.jd.com',
-        'accept-language': 'zh-cn',
-        "User-Agent": USER_AGENT,
-        'referer': 'https://h5.m.jd.com/',
-        'Content-Type': 'application/json; charset=UTF-8',
-        'cookie': cookie
+        'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 12_4_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 MicroMessenger/8.0.16(0x18001027) NetType/WIFI Language/zh_CN',
+        'Referer': 'https://servicewechat.com/wxccb5c536b0ecd1bf/770/page-frame.html',
+        'Cookie': cookie
       },
       body: JSON.stringify({})
     }, (err, resp, data) => {
-      data = JSON.parse(data)
-      if (new Date().getTime() - new Date(data.data.lastFeedTime) < 10800000) {
-        console.log('喂食间隔不够。')
-        resolve();
-      } else {
-        console.log('开始喂食......')
-        let lkt = new Date().getTime()
-        let lks = md5('' + 'JL1VTNRadM68cIMQ' + lkt).toString()
-        $.get({
-          url: `https://jdjoy.jd.com/common/pet/feed?feedCount=${feedNum}&reqSource=h5&invokeKey=JL1VTNRadM68cIMQ`,
-          headers: {
-            'lkt': lkt,
-            'lks': lks,
-            'Host': 'jdjoy.jd.com',
-            'accept': '*/*',
-            'content-type': 'application/x-www-form-urlencoded',
-            'origin': 'https://h5.m.jd.com',
-            'accept-language': 'zh-cn',
-            "User-Agent": USER_AGENT,
-            'referer': 'https://h5.m.jd.com/',
-            'cookie': cookie
-          },
-        }, (err, resp, data) => {
-          try {
-            data = JSON.parse(data);
-            data.errorCode === 'feed_ok' ? console.log(`\t喂食成功！`) : console.log('\t喂食失败', JSON.stringify(data))
-          } catch (e) {
-            $.logErr(e);
-          } finally {
-            resolve();
-          }
-        })
+      try {
+        console.log(data)
+        data = JSON.parse(data)
+      } catch (e) {
+        console.log(e)
+      } finally {
+        resolve()
       }
     })
   })
@@ -278,9 +251,9 @@ function feed() {
 function award(taskType) {
   return new Promise(resolve => {
     let lkt = new Date().getTime()
-    let lks = md5('' + 'JL1VTNRadM68cIMQ' + lkt).toString()
+    let lks = md5('' + 'q8DNJdpcfRQ69gIx' + lkt).toString()
     $.get({
-      url: `https://jdjoy.jd.com/common/pet/getFood?reqSource=h5&invokeKey=JL1VTNRadM68cIMQ&taskType=${taskType}`,
+      url: `https://jdjoy.jd.com/common/pet/getFood?reqSource=h5&invokeKey=q8DNJdpcfRQ69gIx&taskType=${taskType}`,
       headers: {
         'lkt': lkt,
         'lks': lks,
@@ -310,9 +283,9 @@ function run(fn = 'match') {
   let level = process.env.JD_JOY_teamLevel ? process.env.JD_JOY_teamLevel : 2
   return new Promise(resolve => {
     let lkt = new Date().getTime()
-    let lks = md5('' + 'JL1VTNRadM68cIMQ' + lkt).toString()
+    let lks = md5('' + 'q8DNJdpcfRQ69gIx' + lkt).toString()
     $.get({
-      url: `https://jdjoy.jd.com/common/pet/combat/${fn}?teamLevel=${level}&reqSource=h5&invokeKey=JL1VTNRadM68cIMQ`,
+      url: `https://jdjoy.jd.com/common/pet/combat/${fn}?teamLevel=${level}&reqSource=h5&invokeKey=q8DNJdpcfRQ69gIx`,
       headers: {
         'lkt': lkt,
         'lks': lks,
@@ -358,9 +331,9 @@ function run(fn = 'match') {
 function getFriends() {
   return new Promise((resolve) => {
     let lkt = new Date().getTime()
-    let lks = md5('' + 'JL1VTNRadM68cIMQ' + lkt).toString()
+    let lks = md5('' + 'q8DNJdpcfRQ69gIx' + lkt).toString()
     $.post({
-      url: 'https://jdjoy.jd.com/common/pet/enterRoom/h5?invitePin=&reqSource=h5&invokeKey=JL1VTNRadM68cIMQ',
+      url: 'https://jdjoy.jd.com/common/pet/enterRoom/h5?invitePin=&reqSource=h5&invokeKey=q8DNJdpcfRQ69gIx',
       headers: {
         'lkt': lkt,
         'lks': lks,
@@ -383,7 +356,7 @@ function getFriends() {
           break
         }
         $.get({
-          url: 'https://jdjoy.jd.com/common/pet/h5/getFriends?itemsPerPage=20&currentPage=1&reqSource=h5&invokeKey=JL1VTNRadM68cIMQ',
+          url: 'https://jdjoy.jd.com/common/pet/h5/getFriends?itemsPerPage=20&currentPage=1&reqSource=h5&invokeKey=q8DNJdpcfRQ69gIx',
           headers: {
             'Host': 'jdjoy.jd.com',
             'Accept': '*/*',
@@ -398,9 +371,9 @@ function getFriends() {
               if (f.stealStatus === 'can_steal') {
                 console.log('可偷:', f.friendPin)
                 let lkt = new Date().getTime()
-                let lks = md5('' + 'JL1VTNRadM68cIMQ' + lkt).toString()
+                let lks = md5('' + 'q8DNJdpcfRQ69gIx' + lkt).toString()
                 $.get({
-                  url: `https://jdjoy.jd.com/common/pet/enterFriendRoom?reqSource=h5&invokeKey=JL1VTNRadM68cIMQ&friendPin=${encodeURIComponent(f.friendPin)}`,
+                  url: `https://jdjoy.jd.com/common/pet/enterFriendRoom?reqSource=h5&invokeKey=q8DNJdpcfRQ69gIx&friendPin=${encodeURIComponent(f.friendPin)}`,
                   headers: {
                     'lkt': lkt,
                     'lks': lks,
@@ -412,9 +385,9 @@ function getFriends() {
                   }
                 }, (err, resp, data) => {
                   let lkt = new Date().getTime()
-                  let lks = md5('' + 'JL1VTNRadM68cIMQ' + lkt).toString()
+                  let lks = md5('' + 'q8DNJdpcfRQ69gIx' + lkt).toString()
                   $.get({
-                    url: `https://jdjoy.jd.com/common/pet/getRandomFood?reqSource=h5&invokeKey=JL1VTNRadM68cIMQ&friendPin=${encodeURIComponent(f.friendPin)}`,
+                    url: `https://jdjoy.jd.com/common/pet/getRandomFood?reqSource=h5&invokeKey=q8DNJdpcfRQ69gIx&friendPin=${encodeURIComponent(f.friendPin)}`,
                     headers: {
                       'lkt': lkt,
                       'lks': lks,
@@ -503,7 +476,7 @@ function Env(t, e) {
 
   return new class {
     constructor(t, e) {
-      this.name = t, this.http = new s(this), this.data = null, this.dataFile = "box.dat", this.logs = [], this.isMute = !1, this.isNeedRewrite = !1, this.logSeparator = "\n", this.startTime = (new Date).getTime(), Object.assign(this, e), this.log("", `🔔${this.name}, 开始!`)
+      this.name = t, this.http = new s(this), this.data = null, this.dataFile = "box.dat", this.logs = [], this.isMute = !1, this.isNeedRewrite = !1, this.logSeparator = "\n", this.startTime = (new Date).getTime(), Object.assign(this, e), this.log("", `��${this.name}, 开始!`)
     }
 
     isNode() {
@@ -737,7 +710,7 @@ function Env(t, e) {
         }
       };
       if (this.isMute || (this.isSurge() || this.isLoon() ? $notification.post(e, s, i, o(r)) : this.isQuanX() && $notify(e, s, i, o(r))), !this.isMuteLog) {
-        let t = ["", "==============📣系统通知📣=============="];
+        let t = ["", "==============��系统通知��=============="];
         t.push(e), s && t.push(s), i && t.push(i), console.log(t.join("\n")), this.logs = this.logs.concat(t)
       }
     }
@@ -757,7 +730,7 @@ function Env(t, e) {
 
     done(t = {}) {
       const e = (new Date).getTime(), s = (e - this.startTime) / 1e3;
-      this.log("", `🔔${this.name}, 结束! 🕛 ${s} 秒`), this.log(), (this.isSurge() || this.isQuanX() || this.isLoon()) && $done(t)
+      this.log("", `��${this.name}, 结束! �� ${s} 秒`), this.log(), (this.isSurge() || this.isQuanX() || this.isLoon()) && $done(t)
     }
   }(t, e)
 }
